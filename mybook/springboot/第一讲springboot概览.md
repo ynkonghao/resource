@@ -122,4 +122,4 @@ springboot已经正常工作了，整个流程变成非常的简单，甚至不�
  ![springboot概览](https://ynkonghao.github.io/img/springboot/01/08.png)
 
  这就是我们第一次课的内容，相信大家已经看到了Springboot的强悍之处了。
- [本文源码](https://www.github.com/ynkonghao/resource/springboot)
+ [本文源码](https://github.com/ynkonghao/resource/tree/master/src/springboot)
