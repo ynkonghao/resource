@@ -1,0 +1,201 @@
+# SpringBoot第二讲利用Spring Data JPA实现数据库的访问(二)
+
+我们继续研究spring jpa data，首先看看分页和排序的实现，在原来的代码中，我们如果希望实现分页，首先得创建一个`Pager`的对象，在这个对象中记录`total(总数),totalPager(总页数),pageSize(每页多少条记录),pageIndex(当前第几页),offset(查询时的offset)`，在Spring Data JPA中实现分页需要用到三个接口
+- PagingAndSortingRepository
+- Pageable
+- Page
+
+PagingAndSortingRepository是spring data jpa实现分页的工厂，用法和Repository完全一致，先看看源码
+
+``` java
+@NoRepositoryBean
+public interface PagingAndSortingRepository<T, ID extends Serializable> extends CrudRepository<T, ID> {
+    Iterable<T> findAll(Sort var1);
+
+    Page<T> findAll(Pageable var1);
+}
+```
+
+第二个`findAll`方法就是实现分页的方法，参数是`Pageable`类型，同参数传入当前的分页对象(如:第几页，每页多少条记录，排序信息等)，查询完成之后会返回一个`Page`的对象。`Page`对象中就存储了所有的分页信息。Pageable的源码如下
+
+``` java
+public interface Pageable {
+    int getPageNumber();
+
+    int getPageSize();
+
+    int getOffset();
+
+    Sort getSort();
+
+    Pageable next();
+
+    Pageable previousOrFirst();
+
+    Pageable first();
+
+    boolean hasPrevious();
+}
+```
+Pageable是一个接口，它的实现类是`PageRequest`,PageRequest有三个构造方法
+
+```java
+//这个构造出来的分页对象不具备排序功能
+public PageRequest(int page, int size) {
+    this(page, size, (Sort)null);
+}
+//Direction和properties用来做排序操作
+public PageRequest(int page, int size, Direction direction, String... properties) {
+    this(page, size, new Sort(direction, properties));
+}
+//自定义一个排序的操作
+public PageRequest(int page, int size, Sort sort) {
+    super(page, size);
+    this.sort = sort;
+}
+```
+`Page`实现了一个Slice的接口，通过这个接口获取排序之后的各个数值，这些方法都比较直观，通过名称就差不多知道该是什么样的一个操作了，大家可以自行查阅一下Page和Slice的源码，这里就不列出了。
+
+接下实现以下分页的操作, 创建一个`StudentPageRepository`来实现分页操作。
+
+``` java
+public interface StudentPageRepository extends PagingAndSortingRepository<Student,Integer> {
+
+    Page<Student> findByAge(int age, Pageable pageable);
+}
+```
+虽然PagingAndSortingRepository接口中只有findAll方法，但是我们依然可以使用Repository中的衍生查询，我们只要把Pageable放到最后一个参数即可。测试代码
+
+``` java
+@Test
+public void testPage() {
+	//显示第1页每页显示3条
+	PageRequest pr = new PageRequest(1,3);
+	//根据年龄进行查询
+	Page<Student> stus = studentPageRepository.findByAge(22,pr);
+	Assert.assertEquals(2,stus.getTotalPages());
+	Assert.assertEquals(6,stus.getTotalElements());
+	Assert.assertEquals(1,stus.getNumber());
+}
+```
+
+分页的方法非常的简单，下面我们来实现一下排序的操作，排序和分页类似，我们需要传递一个Sort对象进去，`Sort`是一排序类，首先有一个内部枚举对象`Direction`,`Direction`中有两个值`ASC和DESC`分别用来确定升序还是降序，`Sort`还有一个内部类`Order`，`Order`有有两个比较重要的属性`Sort.Direction`和`property`,第一个用来确定排序的方向，第二个就是排序的属性。
+
+`Sort`有如下几个构造函数
+
+```java
+//可以输入多个Sort.Order对象，在进行多个值排序时有用
+public Sort(Sort.Order... orders)
+//和上面的方法一样，无非把多个参数换成了一个List
+public Sort(List<Sort.Order> orders)
+//当排序方向固定时，使用这个比较方便，第一个参数是排序方向，第二个开始就是排序的字段，还有一个方法第二个参数是list，原理相同
+public Sort(Sort.Direction direction, String... properties)
+```
+
+看看排序的代码
+
+``` java
+public interface StudentPageRepository extends PagingAndSortingRepository<Student,Integer> {
+    Page<Student> findByAge(int age, Pageable pageable);
+    List<Student> findByAge(int age, Sort sort);
+}
+
+//排序的实现代码
+@Test
+public void testSort() {
+    //设置排序方式为name降序
+    List<Student> stus = studentPageRepository.findByAge(22
+            ,new Sort(Sort.Direction.DESC,"name"));
+    Assert.assertEquals(5,stus.get(0).getId());
+
+    //设置排序以name和address进行升序
+    stus = studentPageRepository.findByAge(22
+            ,new Sort(Sort.Direction.ASC,"name","address"));
+    Assert.assertEquals(8,stus.get(0).getId());
+
+    //设置排序方式以name升序，以address降序
+    Sort sort = new Sort(
+                    new Sort.Order(Sort.Direction.ASC,"name"),
+                    new Sort.Order(Sort.Direction.DESC,"address"));
+
+    stus = studentPageRepository.findByAge(22,sort);
+    Assert.assertEquals(7,stus.get(0).getId());
+}
+```
+
+如果希望在分页的时候进行排序，一样也非常容易，看一下下面PageReques的构造函数
+
+```java
+public PageRequest(int page, int size, Direction direction, String... properties) {
+    this(page, size, new Sort(direction, properties));
+}
+
+public PageRequest(int page, int size, Sort sort) {
+    super(page, size);
+    this.sort = sort;
+}
+```
+看到这里我相信大家已经会各种排序操作了，这里就不演示了，但是在实际的开发中我们还需要对排序和分页操作进行一下封装，让操作更方便一些，这个话题我们在后面的章节再来详细介绍。
+Spring data jpa 在PagingAndSortingRepository接口下还提供了一个`JpaRepository`接口，该接口封装了更常用的一些方法，使用方式都类似，如果将来在实现的过程中没有特殊的需求(如：不希望公开所有接口方法之类的需求)，一般都继承JPARepository来操作。
+
+Spring Data Jpa同样提供了类似Hibernated 的Criteria的查询方式，要使用这种方式只要继承`JpaSpecificationExecutor`,该接口提供了如下一些方法
+
+``` java
+T findOne(Specification<T> var1);
+List<T> findAll(Specification<T> var1);
+Page<T> findAll(Specification<T> var1, Pageable var2);
+List<T> findAll(Specification<T> var1, Sort var2);
+long count(Specification<T> var1);
+```
+
+该接口通过Specification来定义查询条件，很多朋友可能使用的方式都是基于SQL的，对这种方式可能不太习惯，在下一讲中将会对Specification进行一下封装，让查询操作变得更加的简单方便。这里先简单看一下示例。
+
+``` java
+@Test
+   public void testSpecificaiton() {
+       List<Student> stus = studentSpecificationRepository.findAll(new Specification<Student>() {
+           @Override
+           public Predicate toPredicate(Root<Student> root, CriteriaQuery<?> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+               //root.get("address")表示获取address这个字段名称,like表示执行like查询,%zt%表示值
+               Predicate p1 = criteriaBuilder.like(root.get("address"), "%zt%");
+               Predicate p2 = criteriaBuilder.greaterThan(root.get("id"),3);
+               //将两个查询条件联合起来之后返回Predicate对象
+               return criteriaBuilder.and(p1,p2);
+           }
+       });
+       Assert.assertEquals(2,stus.size());
+       Assert.assertEquals("oo",stus.get(0).getName());
+   }
+```
+
+使用Specification的要点就是CriteriaBuilder，通过这个对象来创建条件，之后返回一个Predicate对象。这个对象中就有了相应的查询需求，我们同样可以定义多个Specification，之后通过Specifications对象将其连接起来。以下是一个非常典型的应用
+
+``` java
+@Test
+public void testSpecificaiton2() {
+//第一个Specification定义了两个or的组合
+Specification<Student> s1 = new Specification<Student>() {
+	@Override
+	public Predicate toPredicate(Root<Student> root, CriteriaQuery<?> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+		Predicate p1 = criteriaBuilder.equal(root.get("id"),"2");
+		Predicate p2 = criteriaBuilder.equal(root.get("id"),"3");
+		return criteriaBuilder.or(p1,p2);
+	}
+};
+//第二个Specification定义了两个or的组合
+Specification<Student> s2 = new Specification<Student>() {
+	@Override
+	public Predicate toPredicate(Root<Student> root, CriteriaQuery<?> criteriaQuery, CriteriaBuilder criteriaBuilder) {
+		Predicate p1 = criteriaBuilder.like(root.get("address"),"zt%");
+		Predicate p2 = criteriaBuilder.like(root.get("name"),"foo%");
+		return criteriaBuilder.or(p1,p2);
+	}
+};
+//通过Specifications将两个Specification连接起来，第一个条件加where，第二个是and
+List<Student> stus = studentSpecificationRepository.findAll(Specifications.where(s1).and(s2));
+
+    Assert.assertEquals(1,stus.size());
+    Assert.assertEquals(3,stus.get(0).getId());
+}
+```
+这个代码生成的sql是`select * from t_student where (id=2 or id=3) and (address like 'zt%' and name like 'foo%')`，这其实是一个非常典型的应用，但是相信大家已经发现这个操作实在是太繁杂了，所以个人认为`Specification`这个方案其实就是为了让我们对其进行封装，而不是直接使用的。

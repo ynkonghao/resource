@@ -2,8 +2,9 @@
 
 在基本了解了springboot的运行流程之后，我们需要逐个来突破springboot的几个关键性问题，我们首先解决的是springboot访问数据库的问题。java访问数据库经历了几个阶段，第一个阶段是直接通过JDBC访问，这种方式工作量极大，而且会做大量的重复劳动，之后出现了一些现成的ORM框架，如Hibernate、Mybatis等，这些框架封装了大量的数据库的访问操作，但是我们依然要对这些框架进行二次封装。如今Spring Data帮助我们解决了数据库的操作的问题，Spring Data还提供了一套JPA接口帮助我们可以非常简单实现基于关系数据库的访问操作。如下图所示：
 
+
 ![利用spring DATA JPA实现数据库访问 ](https://ynkonghao.github.io/img/springboot/02/01.png)
-Spring Data JPA等于在ORM只上又进行了一次封装，但具体的对数据库的访问依然要依赖于底层的ORM框架，Spring Data JPA默认是通过Hibernate实现的，接下来我们就来看看Spring Data JPA如何访问我们的数据库和如何简化我们的操作的。
+Spring Data JPA等于在ORM之上又进行了一次封装，但具体的对数据库的访问依然要依赖于底层的ORM框架，Spring Data JPA默认是通过Hibernate实现的，接下来我们就来看看Spring Data JPA如何访问我们的数据库和如何简化我们的操作的。
 
 ### 第一步创建一个Springboot的项目，并且添加Spring Data JPA的支持
 这个操作可以直接在[start.spring.io](http://start.spring.io)网站中创建，并且添加JPA的支持。这个项目我们可以考虑不使用Web。
