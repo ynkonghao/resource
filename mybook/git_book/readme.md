@@ -4,3 +4,5 @@
 - [第三讲GIT的文件状态和索引](https://github.com/ynkonghao/resource/blob/master/mybook/git_book/03.md)
 - [第四讲GIT的文件状修改和还原](https://github.com/ynkonghao/resource/blob/master/mybook/git_book/04.md)
 - [第五讲GIT的文件状commit、tree和blob组件](https://github.com/ynkonghao/resource/blob/master/mybook/git_book/05.md)
+- [第六讲git的分支命令详解](https://github.com/ynkonghao/resource/blob/master/mybook/git_book/06.md)
+- [第七讲git组件的绝对名称、引用名称、Tag标签、相对名称和reflog](https://github.com/ynkonghao/resource/blob/master/mybook/git_book/07.md)
